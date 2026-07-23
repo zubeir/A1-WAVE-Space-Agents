@@ -409,21 +409,58 @@ HEADER_HELP = {
 }
 
 
+# ---------------------------------------------------------
+# CUSTOM HTML/CSS MATRIX RENDERER (FIXED TOOLTIP CLIPPING)
+# ---------------------------------------------------------
+HEADER_HELP = {
+    "Ticker": "Stock ticker symbol.",
+    "Action Signal": "Execution Decision: BUY PRIME = near 50-SMA + high volume; HOLD = riding trend; EXTENDED = wait for pullbacks; NO TRADE = trend broken.",
+    "Phase 1": "PASS: Price > 50-SMA > 200-SMA (Healthy Uptrend). FAIL: Below key moving averages.",
+    "Price ($)": "Latest closing price.",
+    "50-SMA ($)": "50-Day Simple Moving Average dynamic support line.",
+    "Dist 50-SMA (%)": "Distance to 50-day average. 0% to 4% is prime entry zone.",
+    "Vol vs 20D Avg (%)": "Volume relative to 20-day average. >100% indicates institutional buying.",
+    "RSI (14)": "14-Day Relative Strength Index. <30 = Oversold, 30-50 = Dip Buy, >70 = Extended.",
+    "Stop Loss ($)": "Suggested hard risk stop level set at 2x ATR below entry price.",
+    "3M Return (%)": "Total price return over the past 63 trading days (~3 months).",
+    "vs ARKX Alpha (%)": "Outperformance relative to ARK Space Innovation ETF (ARKX) over 3 months.",
+    "vs ITA Alpha (%)": "Outperformance relative to iShares US Aerospace & Defense ETF (ITA) over 3 months.",
+}
+
+# ---------------------------------------------------------
+# CUSTOM HTML/CSS MATRIX RENDERER (COMPACT & UNCLUTTERED)
+# ---------------------------------------------------------
+HEADER_HELP = {
+    "Ticker": "Stock ticker symbol.",
+    "Action Signal": "Execution Decision: BUY PRIME = near 50-SMA + high volume; HOLD = riding trend; EXTENDED = wait for pullbacks; NO TRADE = trend broken.",
+    "Phase 1": "PASS: Price > 50-SMA > 200-SMA (Healthy Uptrend). FAIL: Below key moving averages.",
+    "Price ($)": "Latest closing price.",
+    "50-SMA ($)": "50-Day Simple Moving Average dynamic support line.",
+    "Dist 50-SMA (%)": "Distance to 50-day average. 0% to 4% is prime entry zone.",
+    "Vol vs 20D Avg (%)": "Volume relative to 20-day average. >100% indicates institutional buying.",
+    "RSI (14)": "14-Day Relative Strength Index. <30 = Oversold, 30-50 = Dip Buy, >70 = Extended.",
+    "Stop Loss ($)": "Suggested hard risk stop level set at 2x ATR below entry price.",
+    "3M Return (%)": "Total price return over the past 63 trading days (~3 months).",
+    "vs ARKX Alpha (%)": "Outperformance relative to ARK Space Innovation ETF (ARKX) over 3 months.",
+    "vs ITA Alpha (%)": "Outperformance relative to iShares US Aerospace & Defense ETF (ITA) over 3 months.",
+}
+
+
 def render_interactive_matrix(df):
     if df.empty:
         st.info("No data available for the selected filter.")
         return
 
-    # Dynamic height calculation to prevent huge white/black spacing gaps
-    # Row height ~42px + Header ~50px + Padding
-    calculated_height = max(120, (len(df) * 42) + 65)
+    # Compact, tight height formula: Header (40px) + 38px per row + subtle border padding
+    calculated_height = (len(df) * 38) + 48
 
     custom_css = """
     <style>
-    body {
+    html, body {
         margin: 0;
         padding: 0;
         background-color: transparent;
+        overflow: hidden;
     }
     .matrix-table {
         width: 100%;
@@ -432,13 +469,12 @@ def render_interactive_matrix(df):
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         font-size: 13px;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        overflow: hidden;
+        border-radius: 6px;
     }
     .matrix-table th {
         background-color: #f8fafc;
         color: #334155;
-        padding: 10px 8px;
+        padding: 8px;
         text-align: left;
         border-bottom: 2px solid #e2e8f0;
         font-weight: 600;
@@ -446,49 +482,66 @@ def render_interactive_matrix(df):
         position: relative;
     }
     .matrix-table td {
-        padding: 10px 8px;
+        padding: 8px;
         border-bottom: 1px solid #f1f5f9;
         background-color: #ffffff;
         color: #0f172a;
         position: relative;
         white-space: nowrap;
     }
-    .matrix-table tr:hover td {
-        background-color: #f1f5f9;
+    .matrix-table tr:last-child td {
+        border-bottom: none;
     }
-    /* Tooltip Styling for Headers & Cells */
+    .matrix-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    /* Tooltip Core Styling */
     .has-tooltip {
         cursor: help;
     }
     .has-tooltip .tooltip-text {
         visibility: hidden;
-        width: 220px;
-        background-color: #1e293b;
-        color: #ffffff;
+        width: 210px;
+        background-color: #0f172a;
+        color: #f8fafc;
         text-align: left;
         border-radius: 6px;
         padding: 8px 10px;
         position: absolute;
-        z-index: 999;
-        top: 110%;
+        z-index: 99999;
         left: 50%;
         transform: translateX(-50%);
         opacity: 0;
-        transition: opacity 0.2s ease-in-out;
+        transition: opacity 0.15s ease-in-out;
         font-size: 11px;
-        line-height: 1.4;
+        line-height: 1.35;
         font-weight: normal;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
         pointer-events: none;
+        white-space: normal;
     }
+
+    /* Header Tooltips open downwards */
+    .matrix-table th.has-tooltip .tooltip-text {
+        top: 100%;
+        bottom: auto;
+    }
+
+    /* Cell Tooltips open upwards */
+    .matrix-table td.has-tooltip .tooltip-text {
+        bottom: 100%;
+        top: auto;
+    }
+
     .has-tooltip:hover .tooltip-text {
         visibility: visible;
         opacity: 1;
     }
     .help-icon {
         display: inline-block;
-        margin-left: 3px;
-        font-size: 11px;
+        margin-left: 2px;
+        font-size: 10px;
         color: #64748b;
     }
     </style>
@@ -571,10 +624,9 @@ def render_interactive_matrix(df):
 
     table_html += "</tbody></table>"
 
-    # Set frame height dynamically based on content length
-    st.components.v1.html(table_html, height=calculated_height, scrolling=True)
+    st.components.v1.html(table_html, height=calculated_height, scrolling=False)
 
-
+    
 # ---------------------------------------------------------
 # 7. ACTIONABLE ENTRY SIGNALS
 # ---------------------------------------------------------
