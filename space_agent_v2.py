@@ -306,6 +306,73 @@ for ticker in active_basket:
         continue
 
 df_stocks = pd.DataFrame(stock_results)
+# ---------------------------------------------------------
+# COLUMN CONFIGURATION & HOVER HELP TOOLTIPS
+# ---------------------------------------------------------
+column_tooltips = {
+    "Ticker": st.column_config.Column(
+        label="Ticker",
+        help="Stock ticker symbol.",
+    ),
+    "Action Signal": st.column_config.Column(
+        label="Action Signal",
+        help="⚡ Execution Decision: BUY PRIME = near 50-SMA + high volume; HOLD = riding trend; EXTENDED = wait for pullbacks; NO TRADE = trend broken.",
+    ),
+    "Phase 1": st.column_config.Column(
+        label="Phase 1",
+        help="🟢 PASS: Price > 50-SMA > 200-SMA (Healthy Uptrend). 🔴 FAIL: Below key moving averages. Must PASS to trade.",
+    ),
+    "Price ($)": st.column_config.NumberColumn(
+        label="Price ($)",
+        help="Latest closing price.",
+        format="$%.2f",
+    ),
+    "50-SMA ($)": st.column_config.NumberColumn(
+        label="50-SMA ($)",
+        help="50-Day Simple Moving Average. Acts as institutional dynamic support line.",
+        format="$%.2f",
+    ),
+    "Dist to 50-SMA (%)": st.column_config.NumberColumn(
+        label="Dist to 50-SMA (%)",
+        help="Distance to 50-day average. 0% to 4% is prime entry zone. >10% is extended.",
+        format="%.2f%%",
+    ),
+    "Vol vs 20D Avg (%)": st.column_config.NumberColumn(
+        label="Vol vs 20D Avg (%)",
+        help="Current volume relative to 20-day average volume. >100% indicates institutional buying.",
+        format="%.1f%%",
+    ),
+    "RSI (14)": st.column_config.NumberColumn(
+        label="RSI (14)",
+        help="14-Day Relative Strength Index. <30 = Oversold, 30-50 = Consolidation (Good), >70 = Extended/Overbought.",
+        format="%.1f",
+    ),
+    "ATR 14 ($)": st.column_config.NumberColumn(
+        label="ATR 14 ($)",
+        help="Average True Range over 14 days (Volatility measure). Used to calculate position stop loss.",
+        format="$%.2f",
+    ),
+    "Stop Loss ($)": st.column_config.NumberColumn(
+        label="Stop Loss ($)",
+        help="Suggested hard risk stop level set at 2x ATR below current price.",
+        format="$%.2f",
+    ),
+    "3M Return (%)": st.column_config.NumberColumn(
+        label="3M Return (%)",
+        help="Total price return over the past 63 trading days (~3 months).",
+        format="%.2f%%",
+    ),
+    "vs ARKX Alpha (%)": st.column_config.NumberColumn(
+        label="vs ARKX Alpha (%)",
+        help="Outperformance relative to ARK Space Innovation ETF (ARKX). Example: +33.19% means this stock outperformed ARKX by 33.19% over 3 months.",
+        format="%.2f%%",
+    ),
+    "vs ITA Alpha (%)": st.column_config.NumberColumn(
+        label="vs ITA Alpha (%)",
+        help="Outperformance relative to iShares US Aerospace & Defense ETF (ITA) over 3 months.",
+        format="%.2f%%",
+    ),
+}
 
 # ---------------------------------------------------------
 # 7. ACTIONABLE ENTRY SIGNALS
@@ -323,10 +390,15 @@ if not df_stocks.empty:
         st.success(
             f"**BUY SIGNALS CONFIRMED:** {len(prime_entries)} stock(s) pass Phase 1 and are sitting in low-risk entry zones:"
         )
-        st.dataframe(prime_entries, use_container_width=True)
+        st.dataframe(
+            prime_entries,
+            column_config=column_tooltips,
+            use_container_width=True,
+            hide_index=True,
+        )
     else:
         st.info(
-            "**NO IMMEDIATE ENTRY SIGNALS:** No stocks currently meet the combined Phase 1 + Volume + Support proximity criteria. Keep capital in cash reserve."
+            "**NO IMMEDIATE ENTRY SIGNALS:** No stocks currently meet the combined Phase 1 + Volume + Support proximity criteria."
         )
 
 st.divider()
@@ -360,4 +432,9 @@ elif signal_filter == "NO TRADE" and not df_stocks.empty:
 else:
     filtered_df = df_stocks
 
-st.dataframe(filtered_df, use_container_width=True)
+st.dataframe(
+    filtered_df,
+    column_config=column_tooltips,
+    use_container_width=True,
+    hide_index=True,
+)
