@@ -169,16 +169,9 @@ def fetch_market_data(tickers, benchmark_tickers):
 data = fetch_market_data(active_basket, BENCHMARKS)
 
 # ---------------------------------------------------------
-# 5. BENCHMARK HEALTH BANNER (WITH HOVER HELP)
+# 5. BENCHMARK HEALTH BANNER
 # ---------------------------------------------------------
 st.subheader("🌐 Sector Benchmark Macro Health")
-
-# Specific decision context per benchmark
-BENCHMARK_HELP = {
-    "ARKX": "Pure-play, high-beta Space Innovation ETF. Tracks high-growth, speculative space tech. Use this to gauge overall risk-on sentiment in space tech.",
-    "ITA": "iShares Aerospace & Defense ETF. Tracks established prime defense contractors (Lockheed, Raytheon, GE). Use this to see if legacy defense capital is strong.",
-    "SPY": "S&P 500 Broad Market Index. Measures overall market macro health and systemic market regime risk.",
-}
 
 
 def analyze_benchmark(symbol, df_close):
@@ -188,7 +181,6 @@ def analyze_benchmark(symbol, df_close):
     sma_200 = series.rolling(200).mean().iloc[-1]
     ret_3m = ((current - series.iloc[-63]) / series.iloc[-63]) * 100
 
-    vs_50_sma_pct = ((current - sma_50) / sma_50) * 100
     above_50 = current > sma_50
     above_200 = current > sma_200
 
@@ -202,7 +194,7 @@ def analyze_benchmark(symbol, df_close):
     return {
         "Price": round(current, 2),
         "Status": status,
-        "vs 50-SMA": round(vs_50_sma_pct, 2),
+        "vs 50-SMA": f"{round(((current - sma_50)/sma_50)*100, 2)}%",
         "3M Return": round(ret_3m, 2),
     }
 
@@ -214,24 +206,15 @@ for idx, (symbol, name) in enumerate(BENCHMARKS.items()):
     metrics = analyze_benchmark(symbol, data["Close"])
     etf_returns[symbol] = metrics["3M Return"]
 
-    # Dynamic tooltip explanation per benchmark metric card
-    metric_help_text = (
-        f"**{symbol} ({name})**\n\n"
-        f"• **{BENCHMARK_HELP[symbol]}**\n\n"
-        f"• **Status ({metrics['Status']}):** Macro health alignment based on 50-SMA & 200-SMA.\n"
-        f"• **3M Return ({metrics['3M Return']}%):** Total gain/loss over the past 63 trading days (~3 months).\n"
-        f"• **vs 50-SMA ({metrics['vs 50-SMA']}%):** Distance above/below the 50-day dynamic support line. Positive means trading above support."
-    )
-
     with etf_cols[idx]:
         st.metric(
             label=f"{symbol} ({name})",
             value=f"${metrics['Price']} | {metrics['Status']}",
-            delta=f"3M Return: {metrics['3M Return']}% (vs 50-SMA: {metrics['vs 50-SMA']}%)",
-            help=metric_help_text,  # Enables hover tooltip on header card!
+            delta=f"3M Return: {metrics['3M Return']}% (vs 50-SMA: {metrics['vs 50-SMA']})",
         )
 
 st.divider()
+
 
 # ---------------------------------------------------------
 # 6. ENHANCED STOCK ANALYSIS ENGINE
@@ -390,190 +373,6 @@ column_tooltips = {
         format="%.2f%%",
     ),
 }
-# ---------------------------------------------------------
-# CUSTOM HTML/CSS MATRIX RENDERER (DYNAMIC HEIGHT & TOOLTIPS)
-# ---------------------------------------------------------
-HEADER_HELP = {
-    "Ticker": "Stock ticker symbol.",
-    "Action Signal": "Execution Decision: BUY PRIME = near 50-SMA + high volume; HOLD = riding trend; EXTENDED = wait for pullbacks; NO TRADE = trend broken.",
-    "Phase 1": "PASS: Price > 50-SMA > 200-SMA (Healthy Uptrend). FAIL: Below key moving averages.",
-    "Price ($)": "Latest closing price.",
-    "50-SMA ($)": "50-Day Simple Moving Average dynamic support line.",
-    "Dist 50-SMA (%)": "Distance to 50-day average. 0% to 4% is prime entry zone.",
-    "Vol vs 20D Avg (%)": "Volume relative to 20-day average. >100% indicates institutional buying.",
-    "RSI (14)": "14-Day Relative Strength Index. <30 = Oversold, 30-50 = Dip Buy, >70 = Extended.",
-    "Stop Loss ($)": "Suggested hard risk stop level set at 2x ATR below entry price.",
-    "3M Return (%)": "Total price return over the past 63 trading days (~3 months).",
-    "vs ARKX Alpha (%)": "Outperformance relative to ARK Space Innovation ETF (ARKX) over 3 months.",
-    "vs ITA Alpha (%)": "Outperformance relative to iShares US Aerospace & Defense ETF (ITA) over 3 months.",
-}
-
-
-def render_interactive_matrix(df):
-    if df.empty:
-        st.info("No data available for the selected filter.")
-        return
-
-    # Dynamic height calculation to prevent huge white/black spacing gaps
-    # Row height ~42px + Header ~50px + Padding
-    calculated_height = max(120, (len(df) * 42) + 65)
-
-    custom_css = """
-    <style>
-    body {
-        margin: 0;
-        padding: 0;
-        background-color: transparent;
-    }
-    .matrix-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        font-size: 13px;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    .matrix-table th {
-        background-color: #f8fafc;
-        color: #334155;
-        padding: 10px 8px;
-        text-align: left;
-        border-bottom: 2px solid #e2e8f0;
-        font-weight: 600;
-        white-space: nowrap;
-        position: relative;
-    }
-    .matrix-table td {
-        padding: 10px 8px;
-        border-bottom: 1px solid #f1f5f9;
-        background-color: #ffffff;
-        color: #0f172a;
-        position: relative;
-        white-space: nowrap;
-    }
-    .matrix-table tr:hover td {
-        background-color: #f1f5f9;
-    }
-    /* Tooltip Styling for Headers & Cells */
-    .has-tooltip {
-        cursor: help;
-    }
-    .has-tooltip .tooltip-text {
-        visibility: hidden;
-        width: 220px;
-        background-color: #1e293b;
-        color: #ffffff;
-        text-align: left;
-        border-radius: 6px;
-        padding: 8px 10px;
-        position: absolute;
-        z-index: 999;
-        top: 110%;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        transition: opacity 0.2s ease-in-out;
-        font-size: 11px;
-        line-height: 1.4;
-        font-weight: normal;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
-        pointer-events: none;
-    }
-    .has-tooltip:hover .tooltip-text {
-        visibility: visible;
-        opacity: 1;
-    }
-    .help-icon {
-        display: inline-block;
-        margin-left: 3px;
-        font-size: 11px;
-        color: #64748b;
-    }
-    </style>
-    """
-
-    table_html = custom_css + '<table class="matrix-table"><thead><tr>'
-
-    headers = [
-        "Ticker",
-        "Action Signal",
-        "Phase 1",
-        "Price ($)",
-        "50-SMA ($)",
-        "Dist 50-SMA (%)",
-        "Vol vs 20D Avg (%)",
-        "RSI (14)",
-        "Stop Loss ($)",
-        "3M Return (%)",
-        "vs ARKX Alpha (%)",
-        "vs ITA Alpha (%)",
-    ]
-
-    for h in headers:
-        tooltip = HEADER_HELP.get(h, "")
-        table_html += f"""
-        <th class="has-tooltip">
-            {h} <span class="help-icon">❓</span>
-            <span class="tooltip-text"><b>{h}:</b><br>{tooltip}</span>
-        </th>
-        """
-
-    table_html += "</tr></thead><tbody>"
-
-    for _, row in df.iterrows():
-        ticker = row["Ticker"]
-
-        help_price = f"Latest closing price for {ticker} is ${row['Price ($)']:.2f}."
-        help_dist = (
-            f"{ticker} is {row['Dist to 50-SMA (%)']:.2f}% from its 50-SMA line. "
-            + (
-                "Sitting in prime buy zone!"
-                if row["Dist to 50-SMA (%)"] <= 4
-                else "Extended from support."
-            )
-        )
-        help_vol = f"{ticker} volume is {row['Vol vs 20D Avg (%)']:.1f}% of its 20-day average. " + (
-            "Institutional buying confirmed!"
-            if row["Vol vs 20D Avg (%)"] >= 110
-            else "Standard volume."
-        )
-        help_rsi = f"RSI is {row['RSI (14)']:.1f}. " + (
-            "Overbought (>70) - wait for dip."
-            if row["RSI (14)"] > 70
-            else (
-                "Oversold/Consolidating - good entry setup."
-                if row["RSI (14)"] < 50
-                else "Neutral trend."
-            )
-        )
-        help_stop = f"Suggested risk stop at ${row['Stop Loss ($)']:.2f} (2x ATR below entry)."
-        help_arkx = f"{ticker} outperformed ARKX space ETF by {row['vs ARKX Alpha (%)']:+.2f}% over 3 months."
-        help_ita = f"{ticker} outperformed ITA defense ETF by {row['vs ITA Alpha (%)']:+.2f}% over 3 months."
-
-        table_html += f"""
-        <tr>
-            <td class="has-tooltip"><b>{ticker}</b><span class="tooltip-text">Ticker symbol: {ticker}</span></td>
-            <td class="has-tooltip">{row['Action Signal']}<span class="tooltip-text">{row['Action Signal']} trigger.</span></td>
-            <td class="has-tooltip">{row['Phase 1']}<span class="tooltip-text">Phase 1 Status: {row['Phase 1']}</span></td>
-            <td class="has-tooltip">${row['Price ($)']:.2f}<span class="tooltip-text">{help_price}</span></td>
-            <td class="has-tooltip">${row['50-SMA ($)']:.2f}<span class="tooltip-text">50-Day Moving Average support level.</span></td>
-            <td class="has-tooltip">{row['Dist to 50-SMA (%)']:.2f}%<span class="tooltip-text">{help_dist}</span></td>
-            <td class="has-tooltip">{row['Vol vs 20D Avg (%)']:.1f}%<span class="tooltip-text">{help_vol}</span></td>
-            <td class="has-tooltip">{row['RSI (14)']:.1f}<span class="tooltip-text">{help_rsi}</span></td>
-            <td class="has-tooltip">${row['Stop Loss ($)']:.2f}<span class="tooltip-text">{help_stop}</span></td>
-            <td class="has-tooltip">{row['3M Return (%)']:.2f}%<span class="tooltip-text">Past 63-day cumulative return.</span></td>
-            <td class="has-tooltip">{row['vs ARKX Alpha (%)']:+.2f}%<span class="tooltip-text">{help_arkx}</span></td>
-            <td class="has-tooltip">{row['vs ITA Alpha (%)']:+.2f}%<span class="tooltip-text">{help_ita}</span></td>
-        </tr>
-        """
-
-    table_html += "</tbody></table>"
-
-    # Set frame height dynamically based on content length
-    st.components.v1.html(table_html, height=calculated_height, scrolling=True)
-
 
 # ---------------------------------------------------------
 # 7. ACTIONABLE ENTRY SIGNALS
@@ -591,7 +390,12 @@ if not df_stocks.empty:
         st.success(
             f"**BUY SIGNALS CONFIRMED:** {len(prime_entries)} stock(s) pass Phase 1 and are sitting in low-risk entry zones:"
         )
-        render_interactive_matrix(prime_entries)
+        st.dataframe(
+            prime_entries,
+            column_config=column_tooltips,
+            use_container_width=True,
+            hide_index=True,
+        )
     else:
         st.info(
             "**NO IMMEDIATE ENTRY SIGNALS:** No stocks currently meet the combined Phase 1 + Volume + Support proximity criteria."
@@ -628,4 +432,9 @@ elif signal_filter == "NO TRADE" and not df_stocks.empty:
 else:
     filtered_df = df_stocks
 
-render_interactive_matrix(filtered_df)
+st.dataframe(
+    filtered_df,
+    column_config=column_tooltips,
+    use_container_width=True,
+    hide_index=True,
+)
